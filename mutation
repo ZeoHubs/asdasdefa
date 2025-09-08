@@ -1,0 +1,206 @@
+-- Services
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+local mutations = {
+    "Shiny", "Inverted", "Frozen", "Windy", "Golden", "Mega", "Tiny",
+    "Tranquil", "IronSkin", "Radiant", "Rainbow", "Shocked", "Ascended"
+}
+local currentMutation = mutations[math.random(#mutations)]
+local espVisible = true
+
+-- GUI Setup
+local gui = Instance.new("ScreenGui")
+gui.Name = "PetMutationFinder"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = PlayerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 220, 0, 185)
+frame.Position = UDim2.new(0.4, 0, 0.4, 0)
+frame.BackgroundColor3 = Color3.fromRGB(118, 61, 25)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+-- Wooden tiled background
+local bg = Instance.new("ImageLabel")
+bg.Size = UDim2.new(1, 0, 1, 0)
+bg.BackgroundTransparency = 1
+bg.Image = "rbxassetid://15910695828"
+bg.ScaleType = Enum.ScaleType.Tile
+bg.TileSize = UDim2.new(0, 64, 0, 64)
+bg.Parent = frame
+
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+local frameStroke = Instance.new("UIStroke", frame)
+frameStroke.Color = Color3.fromRGB(80, 40, 20)
+frameStroke.Thickness = 2
+
+-- Title
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 35)
+title.Text = "🔬 Pet Mutation Finder"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.FredokaOne
+title.TextSize = 18
+
+-- Mobile Dragging
+local dragging, dragStart, startPos
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+frame.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+		local delta = input.Position - dragStart
+		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+-- Toggle GUI visibility with RightShift
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.RightShift then
+		gui.Enabled = not gui.Enabled
+	end
+end)
+
+-- Button Creator with ZeoHub hover glow
+local function createButton(text, yPos, color)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0.9, 0, 0, 35)
+	btn.Position = UDim2.new(0.05, 0, 0, yPos)
+	btn.BackgroundColor3 = color
+	btn.Text = text
+	btn.Font = Enum.Font.FredokaOne
+	btn.TextSize = 16
+	btn.TextColor3 = Color3.new(0, 0, 0)
+	btn.AutoButtonColor = false
+
+	-- Rounded corners and stroke
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+	local stroke = Instance.new("UIStroke", btn)
+	stroke.Color = Color3.fromRGB(40, 120, 60)
+	stroke.Thickness = 1.5
+
+	-- Hover glow overlay
+	local glow = Instance.new("Frame")
+	glow.Size = UDim2.new(1, 0, 1, 0)
+	glow.BackgroundColor3 = Color3.fromRGB(160, 255, 160)
+	glow.BackgroundTransparency = 0.7
+	glow.ZIndex = btn.ZIndex - 1
+	glow.ClipsDescendants = true
+	glow.Parent = btn
+	Instance.new("UICorner", glow).CornerRadius = UDim.new(0, 6)
+
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(glow, TweenInfo.new(0.3), {BackgroundTransparency = 0.3}):Play()
+		TweenService:Create(btn, TweenInfo.new(0.3), {BackgroundColor3 = color:Lerp(Color3.fromRGB(150, 255, 150), 0.2)}):Play()
+	end)
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(glow, TweenInfo.new(0.3), {BackgroundTransparency = 0.7}):Play()
+		TweenService:Create(btn, TweenInfo.new(0.3), {BackgroundColor3 = color}):Play()
+	end)
+
+	btn.Parent = frame
+	return btn
+end
+
+-- Buttons
+local reroll = createButton("🎲 Mutation Reroll", 45, Color3.fromRGB(110, 196, 99))
+local toggle = createButton("👁 Toggle Mutation", 90, Color3.fromRGB(110, 196, 99))
+
+-- Footer Credit
+local credit = Instance.new("TextLabel", frame)
+credit.Size = UDim2.new(1, 0, 0, 20)
+credit.Position = UDim2.new(0, 0, 1, -20)
+credit.Text = "@lumeniax"
+credit.TextColor3 = Color3.fromRGB(200, 200, 200)
+credit.BackgroundTransparency = 1
+credit.Font = Enum.Font.FredokaOne
+credit.TextSize = 13
+
+-- Mutation Machine Finder
+local function findMachine()
+	for _, obj in pairs(Workspace:GetDescendants()) do
+		if obj:IsA("Model") and obj.Name:lower():find("mutation") then
+			return obj
+		end
+	end
+end
+
+local machine = findMachine()
+if not machine or not machine:FindFirstChildWhichIsA("BasePart") then
+	warn("Pet Mutation Machine not found.")
+	return
+end
+local basePart = machine:FindFirstChildWhichIsA("BasePart")
+
+-- ESP Setup
+local espGui = Instance.new("BillboardGui")
+espGui.Name = "MutationESP"
+espGui.Adornee = basePart
+espGui.Size = UDim2.new(0, 200, 0, 40)
+espGui.StudsOffset = Vector3.new(0, 3, 0)
+espGui.AlwaysOnTop = true
+espGui.Parent = basePart
+
+local espLabel = Instance.new("TextLabel", espGui)
+espLabel.Size = UDim2.new(1, 0, 1, 0)
+espLabel.BackgroundTransparency = 1
+espLabel.Font = Enum.Font.FredokaOne
+espLabel.TextSize = 24
+espLabel.TextStrokeTransparency = 0.3
+espLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+espLabel.Text = currentMutation
+espLabel.TextColor3 = Color3.fromHSV(0, 1, 1)
+
+-- Rainbow Color Animation
+local hue = 0
+RunService.RenderStepped:Connect(function()
+	if espVisible then
+		hue = (hue + 0.01) % 1
+		espLabel.TextColor3 = Color3.fromHSV(hue, 1, 1)
+	end
+end)
+
+-- Reroll Animation
+local function animateMutationReroll()
+	reroll.Text = "🔁 Rerolling..."
+	local duration = 2
+	local interval = 0.1
+	for _ = 1, math.floor(duration / interval) do
+		espLabel.Text = mutations[math.random(#mutations)]
+		task.wait(interval)
+	end
+	currentMutation = mutations[math.random(#mutations)]
+	espLabel.Text = currentMutation
+	reroll.Text = "🎲 Mutation Reroll"
+end
+
+-- Button Events
+toggle.MouseButton1Click:Connect(function()
+	espVisible = not espVisible
+	espGui.Enabled = espVisible
+end)
+
+reroll.MouseButton1Click:Connect(animateMutationReroll)
